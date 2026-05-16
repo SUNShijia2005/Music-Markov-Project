@@ -95,14 +95,10 @@ def draw_heatmap(parser, top_n=20):
 
     plt.close()
     print("✅ 图片已保存到桌面和项目文件夹中！")
-
+    
 
 if __name__ == "__main__":
-    # 1. 打印文本矩阵
     show_transition_matrix(parser)
-
-    # 2. 生成并保存热力图
+    
     print("\n--- 开始执行绘图程序... ---")
     draw_heatmap(parser, top_n=15)
-
-    print("\n--- 全部任务完成！ ---")
