@@ -6,9 +6,6 @@ import re
 import os
 from midiutil import MIDIFile
 
-
-# --- 工具函数 ---
-
 def find_nearest_above(my_array, target):
     diff = my_array - target
     mask = np.ma.less(diff, 0)
@@ -16,7 +13,6 @@ def find_nearest_above(my_array, target):
         return None
     masked_diff = np.ma.masked_array(diff, mask)
     return masked_diff.argmin()
-
 
 def get_note_offset_midi_val(note):
     note = note.upper().strip()
@@ -27,7 +23,6 @@ def get_note_offset_midi_val(note):
         "B": 11, "CB": 11
     }
     return switcher.get(note, 0)
-
 
 def get_pitch(note):
     if note == 'R' or note is None: return None
@@ -40,11 +35,10 @@ def get_pitch(note):
     return None
 
 
-# --- 核心生成逻辑 ---
-
+# core generating logic
 def generate(seq_len, parser):
     sequence = [None] * seq_len
-    idx = 0  # 起始点
+    idx = 0
     sequence[0] = parser.states[idx]
 
     curr_index = 1
@@ -52,7 +46,6 @@ def generate(seq_len, parser):
         best_next_idx = None
         attempts = 0
 
-        # 尝试寻找符合乐理约束的音符，最多尝试 15 次
         while attempts < 15:
             note_prob = random.uniform(0, 1)
             next_idx = find_nearest_above(parser.normalized_transition_probability_matrix[idx], note_prob)
@@ -61,7 +54,6 @@ def generate(seq_len, parser):
                 attempts += 1
                 continue
 
-            # 获取前后音高
             prev_note_raw = sequence[curr_index - 1][0]
             curr_note_raw = parser.states[next_idx][0]
 
@@ -71,13 +63,11 @@ def generate(seq_len, parser):
             if prev_p and curr_p:
                 interval = abs(prev_p - curr_p)
 
-                # 约束 1：古典旋律偏好级进。跳进超过 12 度（八度）极大几率拒绝
                 if interval > 12:
                     if random.random() < 0.9:
                         attempts += 1
                         continue
 
-                # 约束 2：防止机械重复同一个音（古典乐极少连续弹 4 次以上同一个音）
                 if interval == 0:
                     if random.random() < 0.7:
                         attempts += 1
@@ -86,7 +76,6 @@ def generate(seq_len, parser):
             best_next_idx = next_idx
             break
 
-        # 如果尝试多次依然没找到理想音符，则选择概率最高的音符兜底
         if best_next_idx is None:
             best_next_idx = parser.normalized_transition_probability_matrix[idx].argmax()
 
@@ -95,9 +84,6 @@ def generate(seq_len, parser):
         curr_index += 1
 
     return sequence
-
-
-# --- 执行主程序 ---
 
 if __name__ == "__main__":
     target_xml = 'bach_test.xml'
@@ -108,7 +94,6 @@ if __name__ == "__main__":
     parser = parse_musicxml.Parser(target_xml)
     print(f"正在处理: {parser.filename}")
 
-    # 生成 120 个音符
     seq_length = 120
     sequence = generate(seq_length, parser)
 
@@ -116,23 +101,21 @@ if __name__ == "__main__":
     track, channel, time = 0, 0, 0.0
     tempo = parser.tempo if parser.tempo is not None else 85
     output_midi.addTempo(track, time, tempo)
-    output_midi.addProgramChange(track, channel, time, 0)  # 钢琴
+    output_midi.addProgramChange(track, channel, time, 0) 
 
     notes_added = 0
     for sound_obj in sequence:
         rhythm_val = parser.rhythm_to_float(sound_obj[1])
         duration = float(rhythm_val) if rhythm_val is not None else 1.0
 
-        # --- 古典律动逻辑 (修复后的强弱拍) ---
-        # 1 拍最强，3 拍次强，2, 4 拍弱。
-        grid_time = round(time * 4)  # 转换成 16 分音符网格
-        if grid_time % 16 == 0:  # 小节第一拍
+        grid_time = round(time * 4) 
+        if grid_time % 16 == 0: 
             dynamic_volume = 112
-        elif grid_time % 8 == 0:  # 小节第三拍
+        elif grid_time % 8 == 0: 
             dynamic_volume = 98
-        elif grid_time % 4 == 0:  # 第二、四拍
+        elif grid_time % 4 == 0: 
             dynamic_volume = 85
-        else:  # 弱拍或切分
+        else:  
             dynamic_volume = 72
 
         sound_info = sound_obj[0]
@@ -151,8 +134,6 @@ if __name__ == "__main__":
 
         time += duration
 
-    # --- 动态终止八度和弦 ---
-    # 找到最后一个有效音高，作为终止音
     last_p = None
     for item in reversed(sequence):
         info = item[0]
@@ -162,12 +143,11 @@ if __name__ == "__main__":
             break
 
     if last_p:
-        # 将最后的音归整到低音区并加八度，制造宏大的结束感
         base_tonic = (last_p % 12) + 48
         output_midi.addNote(track, channel, base_tonic, time, 4.0, 105)
         output_midi.addNote(track, channel, base_tonic + 12, time, 4.0, 105)
 
-    # 保存文件
+    
     desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
     output_name = target_xml.replace('.xml', '') + "_refined_classical.mid"
     full_save_path = os.path.join(desktop_path, output_name)
