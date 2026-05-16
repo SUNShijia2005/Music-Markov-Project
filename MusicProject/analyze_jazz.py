@@ -6,22 +6,14 @@ import numpy as np
 import pandas as pd
 from parse_musicxml import Parser
 
-# 1. 初始化并解析
 parser = Parser('TakeTheATrain.musicxml.xml')
 
-
 def show_transition_matrix(parser, top_n=12):
-    """
-    展示状态转移矩阵的高频部分
-    """
-    # 找出作品中出现频率最高的前 N 个状态（音高+时长组合）
     sorted_states = sorted(parser.initial_transition_dict.items(), key=lambda x: x[1], reverse=True)
     top_states = [s[0] for s in sorted_states[:top_n]]
 
-    # 获取这些高频状态在 parser.states 中的索引
     indices = [parser.states.index(s) for s in top_states]
 
-    # 打印表头 (目标状态)
     print(f"\n{'[转移概率矩阵]':^80}")
     header = "从 \ 到".ljust(18)
     for s in top_states:
@@ -30,7 +22,6 @@ def show_transition_matrix(parser, top_n=12):
     print(header)
     print("-" * len(header))
 
-    # 打印每一行 (起始状态)
     for i, idx_from in enumerate(indices):
         state_from = top_states[i]
         row_label = f"{state_from[0]}/{state_from[1][0]}".ljust(15) + " |"
@@ -51,14 +42,9 @@ def show_transition_matrix(parser, top_n=12):
 
 
 def draw_heatmap(parser, top_n=20):
-    """
-    绘制热力图并直接保存到 Mac 桌面
-    """
-    # 1. 选出前 N 个高频音符
     sorted_states = sorted(parser.initial_transition_dict.items(), key=lambda x: x[1], reverse=True)
     top_states_raw = [s[0] for s in sorted_states[:top_n]]
 
-    # 2. 对这 N 个音符按音高进行二次排序
     top_states = sorted(top_states_raw, key=lambda x: (x[0][-1], x[0]))
     indices = [parser.states.index(s) for s in top_states]
 
@@ -75,7 +61,6 @@ def draw_heatmap(parser, top_n=20):
     labels = [f"{s[0]}/{s[1][0]}" for s in top_states]
     df = pd.DataFrame(plot_matrix, index=labels, columns=labels)
 
-    # 2. 绘图设置
     plt.figure(figsize=(14, 12))
     sns.set_style("white")
 
@@ -95,16 +80,12 @@ def draw_heatmap(parser, top_n=20):
         annot_kws={"size": 10, "weight": "bold", "color": "#333333"}
     )
 
-    # 加标签
     ax.set_xlabel('Next Note', fontsize=15, weight='bold', color='#555555')
     ax.set_ylabel('Current Note', fontsize=15, weight='bold', color='#555555')
-
     plt.xticks(rotation=45, ha='right', fontsize=11)
     plt.yticks(rotation=0, fontsize=11)
-
     plt.tight_layout()
 
-    # 3. 保存到桌面核心代码
     desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
     save_path = os.path.join(desktop_path, "Take_The_A_Train.png")
 
