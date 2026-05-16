@@ -5,7 +5,7 @@ from midiutil import MIDIFile
 import sys
 import re
 import os
-import math  # 引入 math 库用于处理拍子
+import math
 
 
 def find_nearest_above(my_array, target):
@@ -20,7 +20,6 @@ def find_nearest_above(my_array, target):
 def generate(seq_len, parser):
     sequence = [None] * seq_len
 
-    # 初始状态选择
     note_prob = random.uniform(0, 1)
     note_index = find_nearest_above(parser.normalized_initial_transition_matrix, note_prob)
     check_null_index(note_index, "错误：无法在初始转移矩阵中获取索引")
@@ -30,11 +29,9 @@ def generate(seq_len, parser):
 
     while (curr_index < seq_len):
         note_prob = random.uniform(0, 1)
-        # 根据当前音符预测下一个音符
         note_index = find_nearest_above(parser.normalized_transition_probability_matrix[note_index], note_prob)
         check_null_index(note_index, "错误：无法在概率转移矩阵中获取索引")
 
-        # 爵士乐不需要像古典那样严格限制大跳，Take The A Train 本身就有很多琶音跳跃，让它自由发挥！
         sequence[curr_index] = parser.states[note_index]
         curr_index += 1
 
@@ -84,7 +81,6 @@ if __name__ == "__main__":
     parser = parse_musicxml.Parser(target_xml)
     print(f"🎷 正在处理: {parser.filename} (爵士摇摆模式)...")
 
-    # 爵士乐段落通常较长，可以生成 120 个音符
     seq_length = 120
     sequence = generate(seq_length, parser)
 
@@ -92,7 +88,6 @@ if __name__ == "__main__":
     channel = 0
     time = 0.0
 
-    # 爵士通常速度较快且轻快，默认给个 160 BPM 的 Swing 速度
     tempo = parser.tempo if parser.tempo is not None else 160
 
     output_midi = MIDIFile(1)
@@ -115,35 +110,26 @@ if __name__ == "__main__":
                 p = get_pitch(n)
                 if p: pitches.append(p)
 
-        # ---------------- 爵士魔法核心逻辑 ----------------
-
-        # 1. 摇摆节奏 (Swing Feel): 2:1 比例模拟
         play_time = time
         play_duration = duration
 
-        # 判断是否在“反拍”上（例如 0.5, 1.5, 2.5 拍）
         is_off_beat = (time % 1.0) >= 0.4 and (time % 1.0) <= 0.6
 
-        # 如果是连续的八分音符 (duration <= 0.5)
         if duration <= 0.5:
             if is_off_beat:
-                play_time += 0.15  # 反拍延迟出现，制造慵懒感
-                play_duration -= 0.15  # 反拍缩短
+                play_time += 0.15 
+                play_duration -= 0.15 
             else:
-                play_duration += 0.15  # 正拍延长
+                play_duration += 0.15 
 
-        # 2. 爵士重音律动 (Backbeat & Syncopation)
         beat_pos = time % 4
         if beat_pos >= 1.0 and beat_pos < 2.0 or beat_pos >= 3.0 and beat_pos < 4.0:
-            # 重音在 2、4 拍（也就是军鼓打的点）
             dynamic_volume = 115
         elif (time % 1.0) != 0:
-            # 所有反拍/切分音加重力度
             dynamic_volume = 110
         else:
-            # 1、3 拍（正拍）弱下来
             dynamic_volume = 85
-        # ------------------------------------------------
+
 
         for pitch in pitches:
             output_midi.addNote(track, channel, pitch, play_time, play_duration, dynamic_volume)
@@ -151,18 +137,15 @@ if __name__ == "__main__":
 
         time += duration
 
-    # ---------------- 爵士魔法 3：经典六九和弦收尾 ----------------
-    # 把结尾时间推到下一个小节的正拍上
     end_time = math.ceil(time)
 
-    # 一个极具大乐团色彩的 C 6/9 和弦 (C, E, G, A, D)
+
     jazz_ending_chord = [48, 52, 55, 57, 62]
     for p in jazz_ending_chord:
         output_midi.addNote(track, channel, p, end_time, 3.0, 105)
-    # -----------------------------------------------------------
+
 
     desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
-    # 清理一下文件名，让它更好看
     clean_name = target_xml.replace('.musicxml.xml', '').replace('.xml', '')
     output_name = clean_name + "_Jazz_Swing.mid"
     full_save_path = os.path.join(desktop_path, output_name)
@@ -171,6 +154,5 @@ if __name__ == "__main__":
         output_midi.writeFile(output_file)
 
     print("-" * 30)
-    print(f"✅ 爵士大乐团已就绪！")
-    print(f"🎹 写入音符数: {notes_added + 5} (含爵士结尾和弦)")
-    print(f"📂 快去桌面听听看: {output_name}")
+    print(f"写入音符数: {notes_added + 5} (含爵士结尾和弦)")
+    print(f"桌面: {output_name}")
