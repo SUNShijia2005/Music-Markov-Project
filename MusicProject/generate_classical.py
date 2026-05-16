@@ -156,5 +156,5 @@ if __name__ == "__main__":
         output_midi.writeFile(output_file)
 
     print("-" * 30)
-    print(f"🎹 音符生成完毕！总计: {notes_added + 2} 个音符")
-    print(f"📂 导出路径: {full_save_path}")
+    print(f"总计: {notes_added + 2} 个音符")
+    print(f"导出路径: {full_save_path}")
